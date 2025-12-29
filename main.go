@@ -9,12 +9,20 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+
+	"github.com/vmpyr/afterlight/internal/store"
 )
 
 //go:embed web/dist/*
 var dist embed.FS
 
 func main() {
+	db, err := store.NewStorage("afterlight.db")
+	if err != nil {
+		log.Fatalf("Failed to initialize storage: %v", err)
+	}
+	defer db.Close()
+
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger)
