@@ -18,7 +18,7 @@ CREATE TABLE users (
     password_hash        TEXT NOT NULL,     -- Argon2id hash of the master password
 
     -- Configuration: Liveness
-    is_paused            BOOLEAN DEFAULT FALSE, -- If TRUE, timer countdown is suspended (Vacation/Coma mode)
+    is_paused            BOOLEAN NOT NULL DEFAULT FALSE, -- If TRUE, timer countdown is suspended (Vacation/Coma mode)
     check_in_interval    INTEGER NOT NULL,      -- Frequency of expected pings (in Seconds)
     trigger_interval_num INTEGER NOT NULL,      -- Consecutive missed intervals required to trigger
     buffer_period        INTEGER NOT NULL,      -- Grace period after the trigger deadline before notifying verifiers

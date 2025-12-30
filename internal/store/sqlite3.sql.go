@@ -71,7 +71,7 @@ type CreateUserParams struct {
 	Name               string          `json:"name"`
 	Email              string          `json:"email"`
 	PasswordHash       string          `json:"password_hash"`
-	IsPaused           sql.NullBool    `json:"is_paused"`
+	IsPaused           bool            `json:"is_paused"`
 	CheckInInterval    int64           `json:"check_in_interval"`
 	TriggerIntervalNum int64           `json:"trigger_interval_num"`
 	BufferPeriod       int64           `json:"buffer_period"`
