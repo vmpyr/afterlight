@@ -11,7 +11,7 @@ PRAGMA foreign_keys = ON;
 -- 1. USERS
 -- The core account table. Manages authentication and the "Dead Man's Switch" timer.
 -- ==================================================================================
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id                   TEXT PRIMARY KEY,  -- UUID v4
     name                 TEXT NOT NULL,
     email                TEXT UNIQUE NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE users (
 -- Stores communication channels for BOTH Users (for pings) and Beneficiaries (for delivery).
 -- Ideally, a row links to EITHER a user_id OR a beneficiary_id (Polymorphic-ish).
 -- ==================================================================================
-CREATE TABLE contact_methods (
+CREATE TABLE IF NOT EXISTS contact_methods (
     id              TEXT PRIMARY KEY,
 
     -- Owner (One of these must be NULL)
@@ -63,7 +63,7 @@ CREATE TABLE contact_methods (
 -- 2. VAULTS
 -- Logical containers for secrets. A user can have multiple vaults (e.g. "Financial", "Socials").
 -- ==================================================================================
-CREATE TABLE vaults (
+CREATE TABLE IF NOT EXISTS vaults (
     id          TEXT PRIMARY KEY, -- UUID v4
     user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name        TEXT NOT NULL,    -- Friendly name (e.g. "My Bitcoin Keys")
@@ -79,7 +79,7 @@ CREATE TABLE vaults (
 -- 3. ARTIFACTS
 -- The actual encrypted data blobs inside a vault.
 -- ==================================================================================
-CREATE TABLE artifacts (
+CREATE TABLE IF NOT EXISTS artifacts (
     id              TEXT PRIMARY KEY, -- UUID v4
     vault_id        TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
 
@@ -94,7 +94,7 @@ CREATE TABLE artifacts (
 -- 4. BENEFICIARIES (People)
 -- Contacts who can either receive data OR verify death (or both).
 -- ==================================================================================
-CREATE TABLE beneficiaries (
+CREATE TABLE IF NOT EXISTS beneficiaries (
     id              TEXT PRIMARY KEY, -- UUID v4
     user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name            TEXT NOT NULL,
@@ -111,7 +111,7 @@ CREATE TABLE beneficiaries (
 -- 5. VAULT ACCESS (Junction Table)
 -- Controls "Who gets What". Maps Beneficiaries to specific Vaults.
 -- ==================================================================================
-CREATE TABLE vault_access (
+CREATE TABLE IF NOT EXISTS vault_access (
     vault_id        TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
     beneficiary_id  TEXT NOT NULL REFERENCES beneficiaries(id) ON DELETE CASCADE,
 
