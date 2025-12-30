@@ -28,7 +28,7 @@ CREATE TABLE users (
     last_check_in        DATETIME NOT NULL,
     current_status       TEXT DEFAULT 'ALIVE',  -- Enum: 'ALIVE', 'WARNING', 'VERIFICATION_REQUIRED', 'CONFIRMED_DEAD'
 
-    created_at           DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ==================================================================================
@@ -50,7 +50,7 @@ CREATE TABLE contact_methods (
     -- MetaData (JSON) for extra provider-specific data (e.g., Discord Bot Token, formatting rules)
     metadata        TEXT,
 
-    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     -- Constraint: A contact method must belong to someone, but not both.
     CHECK (
@@ -72,7 +72,7 @@ CREATE TABLE vaults (
     kdf_salt    TEXT NOT NULL,    -- Random salt used to derive the encryption key on the Client Side.
                                   -- The server NEVER sees the actual key, only this salt.
 
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ==================================================================================
@@ -87,7 +87,7 @@ CREATE TABLE artifacts (
     encrypted_blob  BLOB NOT NULL,    -- The encrypted payload (AES-GCM ciphertext)
     iv              TEXT NOT NULL,    -- Initialization Vector (Required for AES-GCM decryption)
 
-    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ==================================================================================
@@ -104,7 +104,7 @@ CREATE TABLE beneficiaries (
     has_confirmed   BOOLEAN DEFAULT FALSE,
     confirmed_at    DATETIME,
 
-    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ==================================================================================
