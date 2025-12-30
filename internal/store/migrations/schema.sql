@@ -32,6 +32,34 @@ CREATE TABLE users (
 );
 
 -- ==================================================================================
+-- 2. CONTACT METHODS
+-- Stores communication channels for BOTH Users (for pings) and Beneficiaries (for delivery).
+-- Ideally, a row links to EITHER a user_id OR a beneficiary_id (Polymorphic-ish).
+-- ==================================================================================
+CREATE TABLE contact_methods (
+    id              TEXT PRIMARY KEY,
+
+    -- Owner (One of these must be NULL)
+    user_id         TEXT REFERENCES users(id) ON DELETE CASCADE,
+    beneficiary_id  TEXT REFERENCES beneficiaries(id) ON DELETE CASCADE,
+
+    -- Channel Details
+    channel         TEXT NOT NULL, -- 'EMAIL', 'DISCORD_WEBHOOK', 'TELEGRAM', 'SLACK'
+    target          TEXT NOT NULL, -- 'john@doe.com', 'https://discord.com/api/webhooks/...'
+
+    -- MetaData (JSON) for extra provider-specific data (e.g., Discord Bot Token, formatting rules)
+    metadata        TEXT,
+
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    -- Constraint: A contact method must belong to someone, but not both.
+    CHECK (
+        (user_id IS NOT NULL AND beneficiary_id IS NULL) OR
+        (user_id IS NULL AND beneficiary_id IS NOT NULL)
+    )
+);
+
+-- ==================================================================================
 -- 2. VAULTS
 -- Logical containers for secrets. A user can have multiple vaults (e.g. "Financial", "Socials").
 -- ==================================================================================
@@ -70,10 +98,6 @@ CREATE TABLE beneficiaries (
     id              TEXT PRIMARY KEY, -- UUID v4
     user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name            TEXT NOT NULL,
-
-    -- Dynamic Contact Data (Stored as JSON for flexibility)
-    -- Schema: { "channel": "email|discord|whatsapp", "target": "address|webhook_url", "meta": {...} }
-    contact_info    TEXT NOT NULL,
 
     -- Verifier Role
     is_verifier     BOOLEAN DEFAULT FALSE, -- If TRUE, this person will be contacted to confirm death
