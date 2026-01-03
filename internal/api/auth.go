@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/alexedwards/argon2id"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/vmpyr/afterlight/internal/store"
 )
 
@@ -21,8 +23,18 @@ func NewAuthHandler(s *store.Store) *AuthHandler {
 
 func (h *AuthHandler) Routes() chi.Router {
 	r := chi.NewRouter()
+
+	// Public routes
 	r.Post("/register", h.Register)
 	r.Post("/login", h.Login)
+
+	// Protected routes
+	r.Group(func(r chi.Router) {
+		r.Use(h.AuthMiddleware)
+		r.Get("/me", h.GetCurrentUser)
+		r.Post("/logout", h.Logout)
+	})
+
 	return r
 }
 
@@ -50,17 +62,15 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := UserResponse{
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(UserResponse{
 		ID:            user.ID,
 		Name:          user.Name,
 		Email:         user.Email,
 		CurrentStatus: user.CurrentStatus,
 		CreatedAt:     user.CreatedAt,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(resp)
+	})
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -90,16 +100,79 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Cookies / Sessions
+	// Cookies / Sessions
+	if oldCookie, err := r.Cookie("session_token"); err == nil {
+		_ = h.store.DeleteSession(r.Context(), oldCookie.Value)
+	}
 
-	resp := UserResponse{
+	token := uuid.New().String()
+	expiresAt := time.Now().Add(30 * 24 * time.Hour) // 30 days
+
+	_, err = h.store.CreateSession(r.Context(), store.CreateSessionParams{
+		Token:     token,
+		UserID:    user.ID,
+		ExpiresAt: expiresAt,
+	})
+	if err != nil {
+		http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    token,
+		Expires:  expiresAt,
+		HttpOnly: true,
+		Secure:   false, // TODO: Set to true in production with HTTPS
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(UserResponse{
 		ID:            user.ID,
 		Name:          user.Name,
 		Email:         user.Email,
 		CurrentStatus: user.CurrentStatus,
 		CreatedAt:     user.CreatedAt,
+	})
+}
+
+func (h *AuthHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
+	userCtx := r.Context().Value(UserKey).(*store.User)
+	if userCtx == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	json.NewEncoder(w).Encode(UserResponse{
+		ID:            userCtx.ID,
+		Name:          userCtx.Name,
+		Email:         userCtx.Email,
+		CurrentStatus: userCtx.CurrentStatus,
+		CreatedAt:     userCtx.CreatedAt,
+	})
+}
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session_token")
+	if err != nil {
+		http.Error(w, "No session cookie found", http.StatusBadRequest)
+		return
+	} else {
+		_ = h.store.DeleteSession(r.Context(), cookie.Value)
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Logged out"))
 }

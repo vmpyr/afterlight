@@ -27,14 +27,23 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.createContactMethodStmt, err = db.PrepareContext(ctx, createContactMethod); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateContactMethod: %w", err)
 	}
+	if q.createSessionStmt, err = db.PrepareContext(ctx, createSession); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateSession: %w", err)
+	}
 	if q.createUserStmt, err = db.PrepareContext(ctx, createUser); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateUser: %w", err)
+	}
+	if q.deleteSessionStmt, err = db.PrepareContext(ctx, deleteSession); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteSession: %w", err)
 	}
 	if q.getUserByEmailStmt, err = db.PrepareContext(ctx, getUserByEmail); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserByEmail: %w", err)
 	}
 	if q.getUserByIDStmt, err = db.PrepareContext(ctx, getUserByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserByID: %w", err)
+	}
+	if q.getUserBySessionTokenStmt, err = db.PrepareContext(ctx, getUserBySessionToken); err != nil {
+		return nil, fmt.Errorf("error preparing query GetUserBySessionToken: %w", err)
 	}
 	if q.listContactMethodsByUserIDStmt, err = db.PrepareContext(ctx, listContactMethodsByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query ListContactMethodsByUserID: %w", err)
@@ -52,9 +61,19 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing createContactMethodStmt: %w", cerr)
 		}
 	}
+	if q.createSessionStmt != nil {
+		if cerr := q.createSessionStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createSessionStmt: %w", cerr)
+		}
+	}
 	if q.createUserStmt != nil {
 		if cerr := q.createUserStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createUserStmt: %w", cerr)
+		}
+	}
+	if q.deleteSessionStmt != nil {
+		if cerr := q.deleteSessionStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteSessionStmt: %w", cerr)
 		}
 	}
 	if q.getUserByEmailStmt != nil {
@@ -65,6 +84,11 @@ func (q *Queries) Close() error {
 	if q.getUserByIDStmt != nil {
 		if cerr := q.getUserByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getUserByIDStmt: %w", cerr)
+		}
+	}
+	if q.getUserBySessionTokenStmt != nil {
+		if cerr := q.getUserBySessionTokenStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getUserBySessionTokenStmt: %w", cerr)
 		}
 	}
 	if q.listContactMethodsByUserIDStmt != nil {
@@ -117,9 +141,12 @@ type Queries struct {
 	db                             DBTX
 	tx                             *sql.Tx
 	createContactMethodStmt        *sql.Stmt
+	createSessionStmt              *sql.Stmt
 	createUserStmt                 *sql.Stmt
+	deleteSessionStmt              *sql.Stmt
 	getUserByEmailStmt             *sql.Stmt
 	getUserByIDStmt                *sql.Stmt
+	getUserBySessionTokenStmt      *sql.Stmt
 	listContactMethodsByUserIDStmt *sql.Stmt
 	updateUserCheckInStmt          *sql.Stmt
 }
@@ -129,9 +156,12 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		db:                             tx,
 		tx:                             tx,
 		createContactMethodStmt:        q.createContactMethodStmt,
+		createSessionStmt:              q.createSessionStmt,
 		createUserStmt:                 q.createUserStmt,
+		deleteSessionStmt:              q.deleteSessionStmt,
 		getUserByEmailStmt:             q.getUserByEmailStmt,
 		getUserByIDStmt:                q.getUserByIDStmt,
+		getUserBySessionTokenStmt:      q.getUserBySessionTokenStmt,
 		listContactMethodsByUserIDStmt: q.listContactMethodsByUserIDStmt,
 		updateUserCheckInStmt:          q.updateUserCheckInStmt,
 	}

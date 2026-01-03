@@ -54,6 +54,30 @@ func (q *Queries) CreateContactMethod(ctx context.Context, arg CreateContactMeth
 	return i, err
 }
 
+const createSession = `-- name: CreateSession :one
+INSERT INTO sessions (token, user_id, expires_at)
+VALUES (?, ?, ?)
+RETURNING token, user_id, expires_at, created_at
+`
+
+type CreateSessionParams struct {
+	Token     string    `json:"token"`
+	UserID    string    `json:"user_id"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
+	row := q.queryRow(ctx, q.createSessionStmt, createSession, arg.Token, arg.UserID, arg.ExpiresAt)
+	var i Session
+	err := row.Scan(
+		&i.Token,
+		&i.UserID,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
     id, name, email, password_hash,
@@ -112,6 +136,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const deleteSession = `-- name: DeleteSession :exec
+DELETE FROM sessions WHERE token = ?
+`
+
+func (q *Queries) DeleteSession(ctx context.Context, token string) error {
+	_, err := q.exec(ctx, q.deleteSessionStmt, deleteSession, token)
+	return err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, name, email, password_hash, is_paused, check_in_interval, trigger_interval_num, buffer_period, verifier_quorum, last_check_in, current_status, created_at FROM users
 WHERE email = ? LIMIT 1
@@ -144,6 +177,32 @@ WHERE id = ? LIMIT 1
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 	row := q.queryRow(ctx, q.getUserByIDStmt, getUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.PasswordHash,
+		&i.IsPaused,
+		&i.CheckInInterval,
+		&i.TriggerIntervalNum,
+		&i.BufferPeriod,
+		&i.VerifierQuorum,
+		&i.LastCheckIn,
+		&i.CurrentStatus,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserBySessionToken = `-- name: GetUserBySessionToken :one
+SELECT u.id, u.name, u.email, u.password_hash, u.is_paused, u.check_in_interval, u.trigger_interval_num, u.buffer_period, u.verifier_quorum, u.last_check_in, u.current_status, u.created_at FROM sessions s
+JOIN users u ON s.user_id = u.id
+WHERE s.token = ? AND s.expires_at > CURRENT_TIMESTAMP
+`
+
+func (q *Queries) GetUserBySessionToken(ctx context.Context, token string) (User, error) {
+	row := q.queryRow(ctx, q.getUserBySessionTokenStmt, getUserBySessionToken, token)
 	var i User
 	err := row.Scan(
 		&i.ID,

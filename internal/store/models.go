@@ -40,6 +40,13 @@ type ContactMethod struct {
 	CreatedAt     time.Time      `json:"created_at"`
 }
 
+type Session struct {
+	Token     string       `json:"token"`
+	UserID    string       `json:"user_id"`
+	ExpiresAt time.Time    `json:"expires_at"`
+	CreatedAt sql.NullTime `json:"created_at"`
+}
+
 type User struct {
 	ID                 string          `json:"id"`
 	Name               string          `json:"name"`

@@ -32,3 +32,16 @@ WHERE user_id = ?;
 UPDATE users
 SET last_check_in = ?, current_status = 'ALIVE'
 WHERE id = ?;
+
+-- name: CreateSession :one
+INSERT INTO sessions (token, user_id, expires_at)
+VALUES (?, ?, ?)
+RETURNING *;
+
+-- name: GetUserBySessionToken :one
+SELECT u.* FROM sessions s
+JOIN users u ON s.user_id = u.id
+WHERE s.token = ? AND s.expires_at > CURRENT_TIMESTAMP;
+
+-- name: DeleteSession :exec
+DELETE FROM sessions WHERE token = ?;

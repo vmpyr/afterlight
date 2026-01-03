@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
     check_in_interval    INTEGER NOT NULL,      -- Frequency of expected pings (in Seconds)
     trigger_interval_num INTEGER NOT NULL,      -- Consecutive missed intervals required to trigger
     buffer_period        INTEGER NOT NULL,      -- Grace period after the trigger deadline before notifying verifiers
-    verifier_quorum      INTEGER DEFAULT 1,     -- Consensus: How many verifiers must confirm death? (M-of-N)
+    verifier_quorum      INTEGER DEFAULT 0,     -- Consensus: How many verifiers must confirm death? (M-of-N)
 
     -- State Machine
     last_check_in        DATETIME NOT NULL,
@@ -119,4 +119,16 @@ CREATE TABLE IF NOT EXISTS vault_access (
                           -- Example: "The password is the city where we met."
 
     PRIMARY KEY (vault_id, beneficiary_id)
+);
+
+-- =================================================================================
+-- 6. SESSIONS
+-- Manages user sessions for authentication
+-- =================================================================================
+CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
