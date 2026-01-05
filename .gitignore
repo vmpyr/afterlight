@@ -43,3 +43,6 @@ tmp/
 
 # Database files
 *.db*
+
+# Mounted volumes
+afterlight-data/

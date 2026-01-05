@@ -57,8 +57,12 @@ func main() {
 	contentStatic, _ := fs.Sub(dist, "web/dist")
 	r.Handle("/*", http.FileServer(http.FS(contentStatic)))
 
-	log.Println("Afterlight running on http://localhost:8080")
-	if err := http.ListenAndServe(":8080", r); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	log.Printf("Afterlight running on http://localhost:%s", port)
+	if err := http.ListenAndServe(":"+port, r); err != nil {
 		log.Fatal(err)
 	}
 }
