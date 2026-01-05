@@ -1,0 +1,34 @@
+# --- Version Control ---
+.git
+.gitignore
+
+# --- Go Artifacts ---
+bin/
+vendor/
+afterlight
+*.exe
+*.test
+*.out
+
+# --- Database ---
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# --- Local Data / Volumes ---
+afterlight-data/
+data/
+
+# --- Node / Frontend ---
+node_modules/
+web/node_modules/
+web/dist/
+npm-debug.log
+
+# --- IDE & System ---
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.log

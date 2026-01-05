@@ -5,6 +5,8 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -18,7 +20,16 @@ import (
 var dist embed.FS
 
 func main() {
-	storage, err := store.NewStorage("afterlight.db")
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "afterlight.db"
+	}
+	if dir := filepath.Dir(dbPath); dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			log.Fatalf("Failed to create data directory: %v", err)
+		}
+	}
+	storage, err := store.NewStorage(dbPath)
 	if err != nil {
 		log.Fatalf("Failed to initialize storage: %v", err)
 	}
