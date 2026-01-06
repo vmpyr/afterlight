@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import Login from "./pages/Login"
 import Register from "./pages/Register"
 import Dashboard from "./pages/Dashboard"
+import Vaults from "./pages/Vaults"
+import VaultDetail from "./pages/VaultDetail"
 import Layout from "./components/layout"
 import PrivateRoute from "./components/private-route"
 
@@ -41,7 +43,7 @@ function App() {
             user ? <Navigate to="/" replace /> : <Login onLoginSuccess={setUser} />
           }
         />
-        
+
         <Route
           path="/register"
           element={
@@ -52,8 +54,8 @@ function App() {
         <Route element={<PrivateRoute user={user} isLoading={loading} />}>
           <Route element={<Layout user={user} onLogout={handleLogout} />}>
             <Route path="/" element={<Dashboard user={user} />} />
-            {/* Future Routes */}
-            <Route path="/vaults" element={<div>Vaults Coming Soon</div>} />
+            <Route path="/vaults" element={<Vaults />} />
+            <Route path="/vaults/:id/artifacts" element={<VaultDetail />} />
             <Route path="/settings" element={<div>Settings Coming Soon</div>} />
           </Route>
         </Route>

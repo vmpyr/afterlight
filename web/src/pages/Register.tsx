@@ -19,6 +19,7 @@ interface RegisterProps {
 }
 
 export default function Register({ onRegisterSuccess }: RegisterProps) {
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -55,7 +56,7 @@ export default function Register({ onRegisterSuccess }: RegisterProps) {
       const res = await fetch("/api/v1/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ name, email, password }),
       })
 
       if (res.ok) {
@@ -93,6 +94,17 @@ export default function Register({ onRegisterSuccess }: RegisterProps) {
                 <span>{error}</span>
               </div>
             )}
+            <div className="grid gap-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Your Name"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
