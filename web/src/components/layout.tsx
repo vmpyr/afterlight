@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation, useNavigate } from "react-router-dom"
 import { LayoutDashboard, Lock, Settings, LogOut, Flashlight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { ModeToggle } from "@/components/mode-toggle"
 
 interface LayoutProps {
   user: any
@@ -27,9 +28,12 @@ export default function Layout({ user, onLogout }: LayoutProps) {
     <div className="flex min-h-screen w-full bg-muted/40">
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-10 hidden w-64 flex-col border-r bg-background sm:flex">
-        <div className="flex h-14 items-center border-b px-6 font-semibold tracking-wide">
-          <Flashlight className="mr-2 h-5 w-5" />
-          Afterlight
+        <div className="flex h-14 items-center justify-between border-b px-4 font-semibold tracking-wide">
+          <div className="flex items-center">
+            <Flashlight className="mr-2 h-5 w-5" />
+            Afterlight
+          </div>
+          <ModeToggle />
         </div>
         <div className="flex-1 py-4">
           <nav className="grid items-start px-4 text-sm font-medium">

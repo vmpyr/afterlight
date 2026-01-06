@@ -14,13 +14,14 @@ import {
 import { AlertCircle } from "lucide-react"
 import { ModeToggle } from "@/components/mode-toggle"
 
-interface LoginProps {
-  onLoginSuccess: (user: any) => void
+interface RegisterProps {
+  onRegisterSuccess: (user: any) => void
 }
 
-export default function Login({ onLoginSuccess }: LoginProps) {
+export default function Register({ onRegisterSuccess }: RegisterProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
@@ -28,10 +29,30 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match")
+      return
+    }
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters")
+      return
+    }
+
+    const hasCapital = /[A-Z]/.test(password)
+    const hasNumber = /[0-9]/.test(password)
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password)
+
+    if (!hasCapital || !hasNumber || !hasSpecial) {
+      setError("Password must contain at least 1 capital letter, 1 number, and 1 special character")
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      const res = await fetch("/api/v1/auth/login", {
+      const res = await fetch("/api/v1/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -39,10 +60,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
       if (res.ok) {
         const user = await res.json()
-        onLoginSuccess(user)
+        onRegisterSuccess(user)
         navigate("/")
       } else {
-        setError("Invalid email or password")
+        const data = await res.json().catch(() => ({}))
+        setError(data.error || "Failed to create account")
       }
     } catch {
       setError("Something went wrong. Please try again.")
@@ -58,9 +80,9 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       </div>
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
+          <CardTitle className="text-2xl">Create an account</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account.
+            Enter your email below to create your account.
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -92,15 +114,25 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4 mt-4">
             <Button className="w-full" type="submit" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign in"}
+              {isLoading ? "Creating account..." : "Create account"}
             </Button>
             <div className="text-sm text-center text-muted-foreground">
-              Don't have an account?{" "}
-              <a href="/register" className="text-primary underline-offset-4 hover:underline">
-                Sign up
+              Already have an account?{" "}
+              <a href="/login" className="text-primary underline-offset-4 hover:underline">
+                Sign in
               </a>
             </div>
           </CardFooter>

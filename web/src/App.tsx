@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import Login from "./pages/Login"
+import Register from "./pages/Register"
 import Dashboard from "./pages/Dashboard"
-import Layout from "./components/Layout"
-import PrivateRoute from "./components/PrivateRoute"
+import Layout from "./components/layout"
+import PrivateRoute from "./components/private-route"
 
 function App() {
   const [user, setUser] = useState<any>(null)
@@ -38,6 +39,13 @@ function App() {
           path="/login"
           element={
             user ? <Navigate to="/" replace /> : <Login onLoginSuccess={setUser} />
+          }
+        />
+        
+        <Route
+          path="/register"
+          element={
+            user ? <Navigate to="/" replace /> : <Register onRegisterSuccess={setUser} />
           }
         />
 
