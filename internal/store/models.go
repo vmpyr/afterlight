@@ -21,13 +21,13 @@ type Artifact struct {
 }
 
 type Beneficiary struct {
-	ID           string       `json:"id"`
-	UserID       string       `json:"user_id"`
-	Name         string       `json:"name"`
-	IsVerifier   sql.NullBool `json:"is_verifier"`
-	HasConfirmed sql.NullBool `json:"has_confirmed"`
-	ConfirmedAt  sql.NullTime `json:"confirmed_at"`
-	CreatedAt    time.Time    `json:"created_at"`
+	ID              string       `json:"id"`
+	UserID          string       `json:"user_id"`
+	BeneficiaryName string       `json:"beneficiary_name"`
+	IsVerifier      sql.NullBool `json:"is_verifier"`
+	HasConfirmed    sql.NullBool `json:"has_confirmed"`
+	ConfirmedAt     sql.NullTime `json:"confirmed_at"`
+	CreatedAt       time.Time    `json:"created_at"`
 }
 
 type ContactMethod struct {
@@ -35,7 +35,7 @@ type ContactMethod struct {
 	UserID        sql.NullString `json:"user_id"`
 	BeneficiaryID sql.NullString `json:"beneficiary_id"`
 	Channel       string         `json:"channel"`
-	Target        string         `json:"target"`
+	Destination   string         `json:"destination"`
 	Metadata      core.Metadata  `json:"metadata"`
 	CreatedAt     time.Time      `json:"created_at"`
 }
@@ -63,15 +63,16 @@ type User struct {
 }
 
 type Vault struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
-	Name      string    `json:"name"`
-	KdfSalt   string    `json:"kdf_salt"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        string         `json:"id"`
+	UserID    string         `json:"user_id"`
+	VaultName string         `json:"vault_name"`
+	Hint      sql.NullString `json:"hint"`
+	KdfSalt   string         `json:"kdf_salt"`
+	CreatedAt time.Time      `json:"created_at"`
 }
 
 type VaultAccess struct {
-	VaultID       string         `json:"vault_id"`
-	BeneficiaryID string         `json:"beneficiary_id"`
-	Hint          sql.NullString `json:"hint"`
+	VaultID       string    `json:"vault_id"`
+	BeneficiaryID string    `json:"beneficiary_id"`
+	GrantedAt     time.Time `json:"granted_at"`
 }

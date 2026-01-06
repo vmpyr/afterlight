@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS contact_methods (
 
     -- Channel Details
     channel         TEXT NOT NULL, -- 'EMAIL', 'DISCORD_WEBHOOK', 'TELEGRAM', 'SLACK'
-    target          TEXT NOT NULL, -- 'john@doe.com', 'https://discord.com/api/webhooks/...'
+    destination     TEXT NOT NULL, -- 'john@doe.com', 'https://discord.com/api/webhooks/...'
 
     -- MetaData (JSON) for extra provider-specific data (e.g., Discord Bot Token, formatting rules)
     metadata        TEXT,
@@ -66,7 +66,9 @@ CREATE TABLE IF NOT EXISTS contact_methods (
 CREATE TABLE IF NOT EXISTS vaults (
     id          TEXT PRIMARY KEY, -- UUID v4
     user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    name        TEXT NOT NULL,    -- Friendly name (e.g. "My Bitcoin Keys")
+    vault_name  TEXT NOT NULL,    -- Friendly name (e.g. "My Bitcoin Keys")
+    hint        TEXT, -- Plaintext hint to help the beneficiary decrypt the vault.
+                      -- Example: "The password is the city where we met."
 
     -- Security Metadata
     kdf_salt    TEXT NOT NULL,    -- Random salt used to derive the encryption key on the Client Side.
@@ -95,16 +97,16 @@ CREATE TABLE IF NOT EXISTS artifacts (
 -- Contacts who can either receive data OR verify death (or both).
 -- ==================================================================================
 CREATE TABLE IF NOT EXISTS beneficiaries (
-    id              TEXT PRIMARY KEY, -- UUID v4
-    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    name            TEXT NOT NULL,
+    id                 TEXT PRIMARY KEY, -- UUID v4
+    user_id            TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    beneficiary_name   TEXT NOT NULL,
 
     -- Verifier Role
-    is_verifier     BOOLEAN DEFAULT FALSE, -- If TRUE, this person will be contacted to confirm death
-    has_confirmed   BOOLEAN DEFAULT FALSE,
-    confirmed_at    DATETIME,
+    is_verifier        BOOLEAN DEFAULT FALSE, -- If TRUE, this person will be contacted to confirm death
+    has_confirmed      BOOLEAN DEFAULT FALSE,
+    confirmed_at       DATETIME,
 
-    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ==================================================================================
@@ -115,8 +117,7 @@ CREATE TABLE IF NOT EXISTS vault_access (
     vault_id        TEXT NOT NULL REFERENCES vaults(id) ON DELETE CASCADE,
     beneficiary_id  TEXT NOT NULL REFERENCES beneficiaries(id) ON DELETE CASCADE,
 
-    hint            TEXT, -- Plaintext hint to help the beneficiary decrypt the vault.
-                          -- Example: "The password is the city where we met."
+    granted_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (vault_id, beneficiary_id)
 );

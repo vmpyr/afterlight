@@ -11,7 +11,7 @@ INSERT INTO users (
 
 -- name: CreateContactMethod :one
 INSERT INTO contact_methods (
-    id, user_id, beneficiary_id, channel, target, metadata, created_at
+    id, user_id, beneficiary_id, channel, destination, metadata, created_at
 ) VALUES (
     ?, ?, ?, ?, ?, ?, ?
 ) RETURNING *;
@@ -45,3 +45,33 @@ WHERE s.token = ? AND s.expires_at > CURRENT_TIMESTAMP;
 
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE token = ?;
+
+-- name: CreateVault :one
+INSERT INTO vaults (id, user_id, vault_name, hint, kdf_salt)
+VALUES (?, ?, ?, ?, ?)
+RETURNING *;
+
+-- name: GetVaultsByUser :many
+SELECT * FROM vaults
+WHERE user_id = ?
+ORDER BY created_at DESC;
+
+-- name: GetVaultByID :one
+SELECT * FROM vaults
+WHERE id = ? AND user_id = ?;
+
+-- name: CreateArtifact :one
+INSERT INTO artifacts (id, vault_id, message_type, encrypted_blob, iv)
+VALUES (?, ?, ?, ?, ?)
+RETURNING *;
+
+-- name: GetArtifactsByVault :many
+SELECT a.* FROM artifacts a
+JOIN vaults v ON a.vault_id = v.id
+WHERE a.vault_id = ? AND v.user_id = ?
+ORDER BY a.created_at DESC;
+
+-- name: CreateVaultAccess :one
+INSERT INTO vault_access (vault_id, beneficiary_id)
+VALUES (?, ?)
+RETURNING *;

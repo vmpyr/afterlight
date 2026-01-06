@@ -13,12 +13,46 @@ import (
 	"github.com/vmpyr/afterlight/internal/core"
 )
 
+const createArtifact = `-- name: CreateArtifact :one
+INSERT INTO artifacts (id, vault_id, message_type, encrypted_blob, iv)
+VALUES (?, ?, ?, ?, ?)
+RETURNING id, vault_id, message_type, encrypted_blob, iv, created_at
+`
+
+type CreateArtifactParams struct {
+	ID            string             `json:"id"`
+	VaultID       string             `json:"vault_id"`
+	MessageType   core.MessageType   `json:"message_type"`
+	EncryptedBlob core.EncryptedBlob `json:"encrypted_blob"`
+	Iv            string             `json:"iv"`
+}
+
+func (q *Queries) CreateArtifact(ctx context.Context, arg CreateArtifactParams) (Artifact, error) {
+	row := q.queryRow(ctx, q.createArtifactStmt, createArtifact,
+		arg.ID,
+		arg.VaultID,
+		arg.MessageType,
+		arg.EncryptedBlob,
+		arg.Iv,
+	)
+	var i Artifact
+	err := row.Scan(
+		&i.ID,
+		&i.VaultID,
+		&i.MessageType,
+		&i.EncryptedBlob,
+		&i.Iv,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createContactMethod = `-- name: CreateContactMethod :one
 INSERT INTO contact_methods (
-    id, user_id, beneficiary_id, channel, target, metadata, created_at
+    id, user_id, beneficiary_id, channel, destination, metadata, created_at
 ) VALUES (
     ?, ?, ?, ?, ?, ?, ?
-) RETURNING id, user_id, beneficiary_id, channel, target, metadata, created_at
+) RETURNING id, user_id, beneficiary_id, channel, destination, metadata, created_at
 `
 
 type CreateContactMethodParams struct {
@@ -26,7 +60,7 @@ type CreateContactMethodParams struct {
 	UserID        sql.NullString `json:"user_id"`
 	BeneficiaryID sql.NullString `json:"beneficiary_id"`
 	Channel       string         `json:"channel"`
-	Target        string         `json:"target"`
+	Destination   string         `json:"destination"`
 	Metadata      core.Metadata  `json:"metadata"`
 	CreatedAt     time.Time      `json:"created_at"`
 }
@@ -37,7 +71,7 @@ func (q *Queries) CreateContactMethod(ctx context.Context, arg CreateContactMeth
 		arg.UserID,
 		arg.BeneficiaryID,
 		arg.Channel,
-		arg.Target,
+		arg.Destination,
 		arg.Metadata,
 		arg.CreatedAt,
 	)
@@ -47,7 +81,7 @@ func (q *Queries) CreateContactMethod(ctx context.Context, arg CreateContactMeth
 		&i.UserID,
 		&i.BeneficiaryID,
 		&i.Channel,
-		&i.Target,
+		&i.Destination,
 		&i.Metadata,
 		&i.CreatedAt,
 	)
@@ -136,6 +170,58 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const createVault = `-- name: CreateVault :one
+INSERT INTO vaults (id, user_id, vault_name, hint, kdf_salt)
+VALUES (?, ?, ?, ?, ?)
+RETURNING id, user_id, vault_name, hint, kdf_salt, created_at
+`
+
+type CreateVaultParams struct {
+	ID        string         `json:"id"`
+	UserID    string         `json:"user_id"`
+	VaultName string         `json:"vault_name"`
+	Hint      sql.NullString `json:"hint"`
+	KdfSalt   string         `json:"kdf_salt"`
+}
+
+func (q *Queries) CreateVault(ctx context.Context, arg CreateVaultParams) (Vault, error) {
+	row := q.queryRow(ctx, q.createVaultStmt, createVault,
+		arg.ID,
+		arg.UserID,
+		arg.VaultName,
+		arg.Hint,
+		arg.KdfSalt,
+	)
+	var i Vault
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.VaultName,
+		&i.Hint,
+		&i.KdfSalt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createVaultAccess = `-- name: CreateVaultAccess :one
+INSERT INTO vault_access (vault_id, beneficiary_id)
+VALUES (?, ?)
+RETURNING vault_id, beneficiary_id, granted_at
+`
+
+type CreateVaultAccessParams struct {
+	VaultID       string `json:"vault_id"`
+	BeneficiaryID string `json:"beneficiary_id"`
+}
+
+func (q *Queries) CreateVaultAccess(ctx context.Context, arg CreateVaultAccessParams) (VaultAccess, error) {
+	row := q.queryRow(ctx, q.createVaultAccessStmt, createVaultAccess, arg.VaultID, arg.BeneficiaryID)
+	var i VaultAccess
+	err := row.Scan(&i.VaultID, &i.BeneficiaryID, &i.GrantedAt)
+	return i, err
+}
+
 const deleteSession = `-- name: DeleteSession :exec
 DELETE FROM sessions WHERE token = ?
 `
@@ -143,6 +229,48 @@ DELETE FROM sessions WHERE token = ?
 func (q *Queries) DeleteSession(ctx context.Context, token string) error {
 	_, err := q.exec(ctx, q.deleteSessionStmt, deleteSession, token)
 	return err
+}
+
+const getArtifactsByVault = `-- name: GetArtifactsByVault :many
+SELECT a.id, a.vault_id, a.message_type, a.encrypted_blob, a.iv, a.created_at FROM artifacts a
+JOIN vaults v ON a.vault_id = v.id
+WHERE a.vault_id = ? AND v.user_id = ?
+ORDER BY a.created_at DESC
+`
+
+type GetArtifactsByVaultParams struct {
+	VaultID string `json:"vault_id"`
+	UserID  string `json:"user_id"`
+}
+
+func (q *Queries) GetArtifactsByVault(ctx context.Context, arg GetArtifactsByVaultParams) ([]Artifact, error) {
+	rows, err := q.query(ctx, q.getArtifactsByVaultStmt, getArtifactsByVault, arg.VaultID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Artifact
+	for rows.Next() {
+		var i Artifact
+		if err := rows.Scan(
+			&i.ID,
+			&i.VaultID,
+			&i.MessageType,
+			&i.EncryptedBlob,
+			&i.Iv,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
@@ -221,8 +349,68 @@ func (q *Queries) GetUserBySessionToken(ctx context.Context, token string) (User
 	return i, err
 }
 
+const getVaultByID = `-- name: GetVaultByID :one
+SELECT id, user_id, vault_name, hint, kdf_salt, created_at FROM vaults
+WHERE id = ? AND user_id = ?
+`
+
+type GetVaultByIDParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+func (q *Queries) GetVaultByID(ctx context.Context, arg GetVaultByIDParams) (Vault, error) {
+	row := q.queryRow(ctx, q.getVaultByIDStmt, getVaultByID, arg.ID, arg.UserID)
+	var i Vault
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.VaultName,
+		&i.Hint,
+		&i.KdfSalt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getVaultsByUser = `-- name: GetVaultsByUser :many
+SELECT id, user_id, vault_name, hint, kdf_salt, created_at FROM vaults
+WHERE user_id = ?
+ORDER BY created_at DESC
+`
+
+func (q *Queries) GetVaultsByUser(ctx context.Context, userID string) ([]Vault, error) {
+	rows, err := q.query(ctx, q.getVaultsByUserStmt, getVaultsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Vault
+	for rows.Next() {
+		var i Vault
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.VaultName,
+			&i.Hint,
+			&i.KdfSalt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listContactMethodsByUserID = `-- name: ListContactMethodsByUserID :many
-SELECT id, user_id, beneficiary_id, channel, target, metadata, created_at FROM contact_methods
+SELECT id, user_id, beneficiary_id, channel, destination, metadata, created_at FROM contact_methods
 WHERE user_id = ?
 `
 
@@ -240,7 +428,7 @@ func (q *Queries) ListContactMethodsByUserID(ctx context.Context, userID sql.Nul
 			&i.UserID,
 			&i.BeneficiaryID,
 			&i.Channel,
-			&i.Target,
+			&i.Destination,
 			&i.Metadata,
 			&i.CreatedAt,
 		); err != nil {

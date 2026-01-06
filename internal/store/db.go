@@ -24,6 +24,9 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.createArtifactStmt, err = db.PrepareContext(ctx, createArtifact); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateArtifact: %w", err)
+	}
 	if q.createContactMethodStmt, err = db.PrepareContext(ctx, createContactMethod); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateContactMethod: %w", err)
 	}
@@ -33,8 +36,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.createUserStmt, err = db.PrepareContext(ctx, createUser); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateUser: %w", err)
 	}
+	if q.createVaultStmt, err = db.PrepareContext(ctx, createVault); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateVault: %w", err)
+	}
+	if q.createVaultAccessStmt, err = db.PrepareContext(ctx, createVaultAccess); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateVaultAccess: %w", err)
+	}
 	if q.deleteSessionStmt, err = db.PrepareContext(ctx, deleteSession); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteSession: %w", err)
+	}
+	if q.getArtifactsByVaultStmt, err = db.PrepareContext(ctx, getArtifactsByVault); err != nil {
+		return nil, fmt.Errorf("error preparing query GetArtifactsByVault: %w", err)
 	}
 	if q.getUserByEmailStmt, err = db.PrepareContext(ctx, getUserByEmail); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserByEmail: %w", err)
@@ -44,6 +56,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getUserBySessionTokenStmt, err = db.PrepareContext(ctx, getUserBySessionToken); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserBySessionToken: %w", err)
+	}
+	if q.getVaultByIDStmt, err = db.PrepareContext(ctx, getVaultByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetVaultByID: %w", err)
+	}
+	if q.getVaultsByUserStmt, err = db.PrepareContext(ctx, getVaultsByUser); err != nil {
+		return nil, fmt.Errorf("error preparing query GetVaultsByUser: %w", err)
 	}
 	if q.listContactMethodsByUserIDStmt, err = db.PrepareContext(ctx, listContactMethodsByUserID); err != nil {
 		return nil, fmt.Errorf("error preparing query ListContactMethodsByUserID: %w", err)
@@ -56,6 +74,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
+	if q.createArtifactStmt != nil {
+		if cerr := q.createArtifactStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createArtifactStmt: %w", cerr)
+		}
+	}
 	if q.createContactMethodStmt != nil {
 		if cerr := q.createContactMethodStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createContactMethodStmt: %w", cerr)
@@ -71,9 +94,24 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing createUserStmt: %w", cerr)
 		}
 	}
+	if q.createVaultStmt != nil {
+		if cerr := q.createVaultStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createVaultStmt: %w", cerr)
+		}
+	}
+	if q.createVaultAccessStmt != nil {
+		if cerr := q.createVaultAccessStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createVaultAccessStmt: %w", cerr)
+		}
+	}
 	if q.deleteSessionStmt != nil {
 		if cerr := q.deleteSessionStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteSessionStmt: %w", cerr)
+		}
+	}
+	if q.getArtifactsByVaultStmt != nil {
+		if cerr := q.getArtifactsByVaultStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getArtifactsByVaultStmt: %w", cerr)
 		}
 	}
 	if q.getUserByEmailStmt != nil {
@@ -89,6 +127,16 @@ func (q *Queries) Close() error {
 	if q.getUserBySessionTokenStmt != nil {
 		if cerr := q.getUserBySessionTokenStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getUserBySessionTokenStmt: %w", cerr)
+		}
+	}
+	if q.getVaultByIDStmt != nil {
+		if cerr := q.getVaultByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getVaultByIDStmt: %w", cerr)
+		}
+	}
+	if q.getVaultsByUserStmt != nil {
+		if cerr := q.getVaultsByUserStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getVaultsByUserStmt: %w", cerr)
 		}
 	}
 	if q.listContactMethodsByUserIDStmt != nil {
@@ -140,13 +188,19 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 type Queries struct {
 	db                             DBTX
 	tx                             *sql.Tx
+	createArtifactStmt             *sql.Stmt
 	createContactMethodStmt        *sql.Stmt
 	createSessionStmt              *sql.Stmt
 	createUserStmt                 *sql.Stmt
+	createVaultStmt                *sql.Stmt
+	createVaultAccessStmt          *sql.Stmt
 	deleteSessionStmt              *sql.Stmt
+	getArtifactsByVaultStmt        *sql.Stmt
 	getUserByEmailStmt             *sql.Stmt
 	getUserByIDStmt                *sql.Stmt
 	getUserBySessionTokenStmt      *sql.Stmt
+	getVaultByIDStmt               *sql.Stmt
+	getVaultsByUserStmt            *sql.Stmt
 	listContactMethodsByUserIDStmt *sql.Stmt
 	updateUserCheckInStmt          *sql.Stmt
 }
@@ -155,13 +209,19 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
 		db:                             tx,
 		tx:                             tx,
+		createArtifactStmt:             q.createArtifactStmt,
 		createContactMethodStmt:        q.createContactMethodStmt,
 		createSessionStmt:              q.createSessionStmt,
 		createUserStmt:                 q.createUserStmt,
+		createVaultStmt:                q.createVaultStmt,
+		createVaultAccessStmt:          q.createVaultAccessStmt,
 		deleteSessionStmt:              q.deleteSessionStmt,
+		getArtifactsByVaultStmt:        q.getArtifactsByVaultStmt,
 		getUserByEmailStmt:             q.getUserByEmailStmt,
 		getUserByIDStmt:                q.getUserByIDStmt,
 		getUserBySessionTokenStmt:      q.getUserBySessionTokenStmt,
+		getVaultByIDStmt:               q.getVaultByIDStmt,
+		getVaultsByUserStmt:            q.getVaultsByUserStmt,
 		listContactMethodsByUserIDStmt: q.listContactMethodsByUserIDStmt,
 		updateUserCheckInStmt:          q.updateUserCheckInStmt,
 	}

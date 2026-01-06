@@ -35,9 +35,11 @@ func main() {
 	}
 	defer storage.Close()
 
-	repo := store.NewStore(storage.DB())
+	authRepo := store.NewStore(storage.DB())
+	vaultRepo := store.NewStore(storage.DB())
 
-	authHandler := api.NewAuthHandler(repo)
+	authHandler := api.NewAuthHandler(authRepo)
+	vaultHandler := api.NewVaultHandler(vaultRepo)
 
 	r := chi.NewRouter()
 
@@ -52,6 +54,7 @@ func main() {
 		})
 
 		r.Mount("/auth", authHandler.Routes())
+		r.Mount("/vaults", vaultHandler.Routes(authHandler.AuthMiddleware))
 	})
 
 	contentStatic, _ := fs.Sub(dist, "web/dist")

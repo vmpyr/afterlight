@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"time"
 )
 
 type UserStatus string
@@ -20,9 +21,40 @@ type MessageType string
 const (
 	MsgText MessageType = "TEXT_MESSAGE"
 	MsgFile MessageType = "FILE_UPLOAD"
+	MsgS3   MessageType = "S3_OBJECT_LINK"
 )
 
+type RegisterRequest struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type UserResponse struct {
+	ID            string     `json:"id"`
+	Name          string     `json:"name"`
+	Email         string     `json:"email"`
+	CurrentStatus UserStatus `json:"current_status"`
+	CreatedAt     time.Time  `json:"created_at"`
+}
+
+type CreateVaultRequest struct {
+	VaultName string `json:"vault_name"`
+	Hint      string `json:"hint,omitempty"`
+	KdfSalt   string `json:"kdf_salt"`
+}
+
 type EncryptedBlob []byte
+type CreateArtifactRequest struct {
+	MessageType   MessageType   `json:"message_type"`
+	EncryptedBlob EncryptedBlob `json:"encrypted_blob"`
+	IV            string        `json:"iv"`
+}
 
 // Metadata field specific scanner
 type Metadata map[string]string
