@@ -10,6 +10,7 @@ import (
 	"github.com/alexedwards/argon2id"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/vmpyr/afterlight/internal/core"
 	"github.com/vmpyr/afterlight/internal/store"
 )
 
@@ -40,17 +41,13 @@ func (h *AuthHandler) Routes() chi.Router {
 
 // Handlers
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var req RegisterRequest
+	var req core.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	if err := IsValidPassword(req.Password); err != nil {
-		http.Error(w, "Password does not meet complexity requirements: "+err.Error(), http.StatusBadRequest)
-		return
-	}
 
-	user, err := h.store.CreateUserTx(r.Context(), store.RegisterUserParams{
+	user, err := h.store.CreateUserTx(r.Context(), core.RegisterRequest{
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: req.Password,
@@ -62,9 +59,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.RefreshCookie(w, r, &user)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(UserResponse{
+	json.NewEncoder(w).Encode(core.UserResponse{
 		ID:            user.ID,
 		Name:          user.Name,
 		Email:         user.Email,
@@ -74,7 +73,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req LoginRequest
+	var req core.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -100,37 +99,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Cookies / Sessions
-	if oldCookie, err := r.Cookie("session_token"); err == nil {
-		_ = h.store.DeleteSession(r.Context(), oldCookie.Value)
-	}
-
-	token := uuid.New().String()
-	expiresAt := time.Now().Add(30 * 24 * time.Hour) // 30 days
-
-	_, err = h.store.CreateSession(r.Context(), store.CreateSessionParams{
-		Token:     token,
-		UserID:    user.ID,
-		ExpiresAt: expiresAt,
-	})
-	if err != nil {
-		http.Error(w, "Failed to create session", http.StatusInternalServerError)
-		return
-	}
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session_token",
-		Value:    token,
-		Expires:  expiresAt,
-		HttpOnly: true,
-		Secure:   false, // TODO: Set to true in production with HTTPS
-		Path:     "/",
-		SameSite: http.SameSiteLaxMode,
-	})
+	h.RefreshCookie(w, r, &user)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(UserResponse{
+	json.NewEncoder(w).Encode(core.UserResponse{
 		ID:            user.ID,
 		Name:          user.Name,
 		Email:         user.Email,
@@ -146,7 +119,7 @@ func (h *AuthHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(UserResponse{
+	json.NewEncoder(w).Encode(core.UserResponse{
 		ID:            userCtx.ID,
 		Name:          userCtx.Name,
 		Email:         userCtx.Email,
@@ -175,4 +148,33 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Logged out"))
+}
+
+func (h *AuthHandler) RefreshCookie(w http.ResponseWriter, r *http.Request, user *store.User) {
+	if oldCookie, err := r.Cookie("session_token"); err == nil {
+		_ = h.store.DeleteSession(r.Context(), oldCookie.Value)
+	}
+
+	token := uuid.New().String()
+	expiresAt := time.Now().Add(30 * 24 * time.Hour) // 30 days
+
+	_, err := h.store.CreateSession(r.Context(), store.CreateSessionParams{
+		Token:     token,
+		UserID:    user.ID,
+		ExpiresAt: expiresAt,
+	})
+	if err != nil {
+		http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    token,
+		Expires:  expiresAt,
+		HttpOnly: true,
+		Secure:   false, // TODO: Set to true in production with HTTPS
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
+	})
 }
